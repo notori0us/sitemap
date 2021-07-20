@@ -28,12 +28,17 @@ class Page
   # document: Nokogiri::HTML::Document
   def parse_links(document)
     link_tags = document.xpath("//a")
-    link_tags.map {|tag| tag[:href]}
+    link_tags.map do |tag|
+      # handle relative URLs
+      URI.join(@page_url, tag[:href]).to_s
+    end
   end
 
   # document: Nokogiri::HTML::Document
   def parse_images(document)
     link_tags = document.xpath("//img")
-    link_tags.map {|tag| tag[:src]}
+    link_tags.map do |tag|
+      URI.join(@page_url, tag[:src]).to_s
+    end
   end
 end
