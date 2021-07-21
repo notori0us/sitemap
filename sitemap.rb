@@ -1,34 +1,36 @@
 require_relative 'page'
 
-# nice to haves:
-# * use ARGV instead of hardcoding url
-# * write to file instead of using *nix stdout
+def site_map(starting_url: 'https://mozilla.org', max_depth: 10)
+  discovered = {}
+  search_recursive(URI(starting_url), discovered, max_depth)
 
-def site_map(starting_url: 'https://mozilla.com', max_depth: 10)
-
-  search_iterative(starting_url).map {|page| page.to_h}.to_json
-
+  puts "Writing file 'sitemap.json'"
+  File.open('sitemap.json', 'w') do |f|
+    f.write(JSON.pretty_generate(discovered.values.map {|page| page.to_h_as_strings}))
+  end
 end
 
 
-# run iterative DFS
-# the main problem with this approach is that it's hard to limit our depth. So let's avoid this
-def search_iterative(url)
-  discovered = {}
-  stack = []
-  stack.push(url)
+def search_recursive(current_uri, discovered, max_depth)
+  puts "Visiting #{current_uri.to_s}"
+  current_page = Page.new(current_uri)
+  discovered[current_uri.to_s] = current_page
 
-  while stack.any?
-    current_url = stack.pop
-
-    unless discovered.key?(current_url)
-      current_page = Page.new(current_url)
-      discovered[current_url] = current_page
-      stack.push(*current_page.links) # push all children
+  current_page.links.each do |link|
+    if !discovered.key?(link.to_s) && max_depth > 0 && same_domain?(current_page.uri, link)
+      search_recursive(link, discovered, max_depth - 1)
     end
   end
-
-  discovered.values
 end
 
-site_map
+def same_domain?(current_page, link)
+  current_page.host == link.host
+end
+
+if ARGV.length >= 2
+  site_map(starting_url: ARGV[0], max_depth: ARGV[1].to_i)
+elsif ARGV.length == 1
+  site_map(starting_url: ARGV[0])
+else
+  site_map
+end
